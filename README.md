@@ -1,2 +1,3 @@
-# git-learning (Quick Steps)
+# git-learning (Quick Steps) 
+## Github basic commands
 
