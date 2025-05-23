@@ -2,13 +2,34 @@
 
 It’s a great idea to categorize Git commands based on the workflow to make it easier for newcomers to understand how Git works. Here's how you can break it down into **logical categories** to help new developers grasp the sequence and purpose of each command.
 
-1. **Category 1: Initial Setup & Repository Management**
+1. **Category 1: Initial Setup & Repository Management** (init or clone),
+	- **`git init`**: Creates a new Git repository in your local directory.
+	- **`git clone`**: Creates a copy of an existing remote repository on your local machine.
+	- **`git status`**: Helps you see which changes are staged, unstaged, or untracked in your working directory.
 2. **Category 2: Working with Branches**
+	- **`git branch`**: View the branches in your repository or create a new one.
+	- **`git checkout`**: Switch between branches or reset to a previous commit.
+	- **`git checkout -b`**: Create and switch to a new branch in one step.
+	- **`git merge`**: Merge changes from one branch into another.
 3. **Category 3: Staging, Committing, and Pushing Changes with tags**
-4. **Category 4: Updating Your Local Repository**
-5. **Category 5: Handling Conflicts and Temporary Work**
-6. **Category 6: Working with Tags and Remotes**
+	- **`git add`**: Stage your modified files, telling Git to include them in the next commit.
+	- **`git commit`**: Record the staged changes in the local repository with a descriptive commit message.
+	- **`git push`**: Upload your committed changes to the remote repository (e.g., GitHub).
+	- **`git tag`**: Create a tag for a specific commit. This is often used for marking releases or important milestones in the 
+4. **Category 4: Updating Your Local Repository** (Push changes to remote)
+	- **`git fetch`**: Retrieve the latest changes from the remote without modifying your working directory.
+	- **`git pull`**: Fetch the latest changes and merge them into your current branch.
+5. **Category 5: Handling Conflicts and Temporary Work** (stash, rebase), 
+	- **`git stash`**: Temporarily save uncommitted changes and revert to the last commit (useful when switching tasks).
+	- **`git rebase`**: Rebase your current branch onto another branch to ensure a clean commit history.
+	- **`git reset`**: Unstage files or reset your branch to a previous state.
+6. **Category 6: Working with Tags and Remotes** for collaboration.
+	- **`git remote`**: View or manage the remote repositories you are connected to (e.g., `origin`).
+	- **`git tag`**: Create a tag for a specific commit (often used for releases).
+	- **`git push --tags`**: Push all local tags to the remote repository.
 7. **Category 7: Cleaning Up and Removing Files**
+	- **`git rm`**: Remove files from both the working directory and staging area.
+	- **`git clean`**: Remove untracked files (useful for cleaning up your working directory).
 
 ---
 
@@ -274,10 +295,12 @@ Commands related to cleaning up files and removing them from the repository.
 
 This categorization of Git commands helps beginners understand the logical flow of working with Git. By following this structure:
 
-1. **Category 1: Initial Setup & Repository Management** (init or clone),
+
+1. **Category 1: Initial Setup & Repository Management**
 2. **Category 2: Working with Branches**
 3. **Category 3: Staging, Committing, and Pushing Changes with tags**
-4. **Category 4: Updating Your Local Repository** (Push changes to remote)
-5. **Category 5: Handling Conflicts and Temporary Work** (stash, rebase), 
-6. **Category 6: Working with Tags and Remotes** for collaboration.
+4. **Category 4: Updating Your Local Repository**
+5. **Category 5: Handling Conflicts and Temporary Work**
+6. **Category 6: Working with Tags and Remotes**
 7. **Category 7: Cleaning Up and Removing Files**
+
