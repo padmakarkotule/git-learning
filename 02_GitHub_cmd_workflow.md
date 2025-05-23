@@ -50,10 +50,20 @@ This category includes commands related to setting up a new repository and cloni
 
 #### **Examples**:
 - **`git init`**: Creates a new Git repository in your local directory.
-   - Create empty folder in your local directory e.g. mkdir new_github_repo
-   - 
+   ```bash
+      mkdir my-website
+      cd my-website
+      git init
+   ```
 - **`git clone`**: Creates a copy of an existing remote repository on your local machine.
+   ```bash
+   git clone https://github.com/padmakarkotule/my-website.git
+   cd my-website
+   ```
 - **`git status`**: Helps you see which changes are staged, unstaged, or untracked in your working directory.
+   ```bash
+   git status
+   ```
 ---
 
 ### **Category 2: Working with Branches**
@@ -75,10 +85,23 @@ This category covers commands related to **branching** in Git. Branches are esse
 
 #### **Examples**:
 - **`git branch`**: View the branches in your repository or create a new one.
+   ```bash
+   git branch             # List branches
+   git branch dev         # Create dev branch
+   ```
 - **`git checkout`**: Switch between branches or reset to a previous commit.
+   ```bash
+   git checkout main
+   ```
 - **`git checkout -b`**: Create and switch to a new branch in one step.
+   ```bash
+   git checkout -b dev
+   ```
 - **`git merge`**: Merge changes from one branch into another.
-
+   ```bash
+   git checkout main
+   git merge dev
+   ```
 ---
 
 ### **Category 3: Staging, Committing, and Pushing Changes (Including Tags)**
@@ -103,30 +126,42 @@ This category helps you track and save changes to your local repository, push th
 
 #### **Examples**:
 - **`git add`**: Stage your modified files, telling Git to include them in the next commit.
+   ```bash
+   echo "<h1>Hello from dev branch</h1>" > index.html
+   git add index.html
+   ```
 - **`git commit`**: Record the staged changes in the local repository with a descriptive commit message.
+   ```bash
+   git commit -m "Add headline to index.html in dev"
+   ```
 - **`git push`**: Upload your committed changes to the remote repository (e.g., GitHub).
-- **`git tag`**: Create a tag for a specific commit. This is often used for marking releases or important milestones in the project history.
-- **`git log`**: View the history of commits and tags on the current branch.
----
-
-### Example Workflow with `git tag`:
-
-1. **Stage and Commit Changes**:
+   ```bash
+   git push origin dev
+   ```
+- **`git tag`**: Create a tag for a specific commit. This is often used for marking releases or important milestones in the   
+   project history.
+   ```bash
+   git tag v1.0
+   ```
+   1. **Stage and Commit Changes**:
    ```bash
    git add index.html
    git commit -m "Fixed bug in index.html"
    ```
 
-2. **Create a Tag** (e.g., marking a release):
-   ```bash
-   git tag v1.0
-   ```
+   2. **Create a Tag** (e.g., marking a release):
+      ```bash
+      git tag v1.0
+      ```
 
-3. **Push Changes and Tags**:
-   ```bash
-   git push origin feature/awesome-feature
-   git push origin v1.0  # Push the tag to the remote
-   ```
+   3. **Push Changes and Tags**:
+      ```bash
+      git push origin feature/awesome-feature
+      git push origin v1.0  # Push the tag to the remote
+      `
+- **`git log`**: View the history of commits and tags on the current branch.
+
+---
 
 By placing `git tag` in Category 3, we reflect the fact that it's part of your typical Git workflow after committing and before pushing changes (or tagging a specific commit to mark a release). It follows logically after pushing changes, as you may want to create a tag just before or after pushing commits to the remote.
 
@@ -149,9 +184,7 @@ This category involves pulling changes from remote repositories to ensure your l
 
 #### **Examples**:
 - **`git fetch`**: Retrieve the latest changes from the remote without modifying your working directory.
-- **`git pull`**: Fetch the latest changes and merge them into your current branch.
- 
-- `Example - git fetch`:
+  `Example - git fetch`:
    1. Open github.com from web site, go to your repository and change the README.md file, commit and update the change.
    2. On local use command `git fetch`
    3. Check the **status of your local branch compared to the remote**
@@ -203,7 +236,9 @@ This category involves pulling changes from remote repositories to ensure your l
 
 
 - `Example - git pull`**: Fetch the latest changes and merge them into your current branch.
-
+   ```bash
+   git pull origin main
+   ```
 ---
 
 ### **Category 5: Handling Conflicts and Temporary Work**
@@ -224,8 +259,20 @@ These commands are useful when you want to temporarily save your work or handle 
 
 #### **Examples**:
 - **`git stash`**: Temporarily save uncommitted changes and revert to the last commit (useful when switching tasks).
+   ```bash
+   echo "<footer>Contact us</footer>" >> index.html
+   git stash
+   ```
 - **`git rebase`**: Rebase your current branch onto another branch to ensure a clean commit history.
+   ```bash
+   git checkout dev
+   git rebase main
+   ```
 - **`git reset`**: Unstage files or reset your branch to a previous state.
+   ```bash
+   git reset HEAD index.html
+   ```
+
 ---
 
 ### **Category 6: Working with Tags and Remotes**
@@ -245,9 +292,18 @@ Commands in this category help you work with remote repositories and mark specif
 
 #### **Examples**:
 - **`git remote`**: View or manage the remote repositories you are connected to (e.g., `origin`).
+   ```bash
+   git remote -v
+   ```
 - **`git tag`**: Create a tag for a specific commit (often used for releases).
+   ```bash
+   git push origin --tags
+   ```
 - **`git push --tags`**: Push all local tags to the remote repository.
-
+   ```bash
+   git rm index.html
+   git commit -m "Remove index.html from dev"
+   ```
 ---
 
 ### **Category 7: Cleaning Up and Removing Files**
@@ -265,8 +321,14 @@ Commands related to cleaning up files and removing them from the repository.
 
 #### **Examples**:
 - **`git rm`**: Remove files from both the working directory and staging area.
+   ```bash
+   git rm index.html
+   git commit -m "Remove index.html from dev"
+   ```
 - **`git clean`**: Remove untracked files (useful for cleaning up your working directory).
-
+   ```bash
+   git clean -f
+   ```
 ---
 
 ### **Git Workflow for Beginners (Summary)**
