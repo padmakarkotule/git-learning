@@ -64,12 +64,16 @@ This category includes commands related to setting up a new repository and cloni
    Go to https://github.com/new, name it my-website.
 4. Connect your local repo to GitHub:
    Replace YOUR_USERNAME with your GitHub username:
+   
+   ```bash
    git remote add origin https://github.com/padmakarkotule/my-website.git
    git branch -M main
+   ```
    ## Importanant steps, use --set-upstream or -u 
+   ```bash
    git push --set-upstream origin main
    git push -u origin main
-
+   ```
    ###### what is -u in git push -u origin main
    what is -u in git push -u origin main
    -u in git push -u origin main stands for:
@@ -78,18 +82,22 @@ This category includes commands related to setting up a new repository and cloni
 
    **What does that mean?**
    When you push for the first time:
+   ```bash
    git push -u origin main
-
+   ```
    You're telling Git:
    “Push my main branch to origin and remember the relationship between them.”
    **Why is this useful?**
    After setting upstream with -u, you can just run:
+   ```bash
    git push
    git pull
-
+   ```
    **Without -u:**
    You’d always need to run:
+   ```bash
    git push origin main
+   ```
    or Git will complain: “No upstream branch configured.”
 
 
