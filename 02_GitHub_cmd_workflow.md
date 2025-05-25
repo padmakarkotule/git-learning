@@ -50,20 +50,49 @@ This category includes commands related to setting up a new repository and cloni
 
 #### **Examples**:
 - **`git init`**: Creates a new Git repository in your local directory.
+1. Create a local project:
    ```bash
       mkdir my-website
       cd my-website
       git init
    ```
-- **`git clone`**: Creates a copy of an existing remote repository on your local machine.
-   ```bash
-   git clone https://github.com/padmakarkotule/my-website.git
-   cd my-website
-   ```
-- **`git status`**: Helps you see which changes are staged, unstaged, or untracked in your working directory.
-   ```bash
-   git status
-   ```
+2. Add your files and commit:
+   echo "# My Website" > README.md
+   git add .
+   git commit -m "Initial commit"
+3. Create a new repo on GitHub:
+   Go to https://github.com/new, name it my-website.
+4. Connect your local repo to GitHub:
+   Replace YOUR_USERNAME with your GitHub username:
+   git remote add origin https://github.com/padmakarkotule/my-website.git
+   git branch -M main
+   ## Importanant steps, use --set-upstream or -u 
+   git push --set-upstream origin main
+   git push -u origin main
+
+   ###### what is -u in git push -u origin main
+   what is -u in git push -u origin main
+   -u in git push -u origin main stands for:
+   --set-upstream
+   It tells Git to link your local branch (main) to the remote branch on origin.
+
+   **What does that mean?**
+   When you push for the first time:
+   git push -u origin main
+
+   You're telling Git:
+   “Push my main branch to origin and remember the relationship between them.”
+   **Why is this useful?**
+   After setting upstream with -u, you can just run:
+   git push
+   git pull
+
+   **Without -u:**
+   You’d always need to run:
+   git push origin main
+   or Git will complain: “No upstream branch configured.”
+
+
 ---
 
 ### **Category 2: Working with Branches**
@@ -96,12 +125,22 @@ This category covers commands related to **branching** in Git. Branches are esse
 - **`git checkout -b`**: Create and switch to a new branch in one step.
    ```bash
    git checkout -b dev
+   or 
+   git checkout dev # If dev branch already exits
    ```
 - **`git merge`**: Merge changes from one branch into another.
    ```bash
    git checkout main
    git merge dev
+   git push
    ```
+   #### **Your merge goal**
+   | Your Goal                              | Commands to Run                                    |
+   | -------------------------------------- | -------------------------------------------------- |
+   | Merge `dev` → `main` (promote to prod) | `git checkout main` → `git merge dev` → `git push` |
+   | Merge `main` → `dev` (sync updates)    | `git checkout dev` → `git merge main` → `git push` |
+
+
 ---
 
 ### **Category 3: Staging, Committing, and Pushing Changes (Including Tags)**
@@ -327,30 +366,11 @@ Commands related to cleaning up files and removing them from the repository.
    ```
 - **`git clean`**: Remove untracked files (useful for cleaning up your working directory).
    ```bash
+   touch testfile
+   git status
+    # This will show untrack files. 
    git clean -f
    ```
----
-
-### **Git Workflow for Beginners (Summary)**
-
-1. **Initialize or Clone Repository**:
-   - `git init` (to start a new repo) or `git clone` (to clone an existing repo).
-   
-2. **Start Working with Branches**:
-   - Use `git branch` to see the branches or `git checkout -b` to create a new branch and start working on it.
-   
-3. **Stage and Commit Changes**:
-   - `git add` your changes, then `git commit` to save them locally.
-   
-4. **Push Your Changes to Remote**:
-   - `git push` to upload your changes to a remote repository.
-
-5. **Keep Your Repository Updated**:
-   - Use `git pull` to bring in changes from the remote repository.
-
-6. **Handle Conflicts**:
-   - Use `git stash` to temporarily save your work if needed, or `git merge` to merge branches and resolve conflicts.
-
 ---
 
 ### Conclusion:
