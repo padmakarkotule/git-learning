@@ -1,0 +1,528 @@
+pipeline {
+    agent any
+    options {
+        copyArtifactPermission('*');
+        disableConcurrentBuilds();
+    }
+    environment {
+// values.yaml inside helmchart for each individual environment
+        CUG_VALUES_FILE = "prod_values.yaml"
+        AUTO_CUG_VALUES_FILE = "auto_prod_values.yaml"
+
+        SUPERPROD_VALUES_FILE = "prod_values.yaml"
+
+        PERF_VALUES_FILE = "perf_values.yaml"
+        AUTO_PERF_VALUES_FILE = "auto_perf_values.yaml"
+
+        POC_VALUES_FILE = "perf_values.yaml"
+        AUTO_POC_VALUES_FILE = "auto_perf_values.yaml"
+
+// Namespace inside gke cluster where microservice helmchart is deployed
+        CUG_NS = "abc-prod"
+        SUPERPROD_NS = "abc-prod"
+        PERF_NS = "abc-perf"
+        POC_NS = "abc-perf"
+
+        CUG_UPI_NS = "abc-prod-upi"
+        SUPERPROD_UPI_NS = "abc-prod-upi"
+        PERF_UPI_NS = "abc-perf-upi"
+        POC_UPI_NS = "abc-perf-upi"
+
+        CUG_MONITORING_NS = "abc-monitoring-logging"
+        SUPERPROD_MONITORING_NS = "abc-monitoring-logging"
+        PERF_MONITORING_NS = "null"
+        POC_MONITORING_NS = "null"
+
+        RELEASE_DOCKER_REPOSITORY="asia-docker.pkg.dev/devops-ci-cd-ct/oneapp-release-docker-repository-mr"
+        RELEASE_HELM_REPOSITORY = "asia-docker.pkg.dev/devops-ci-cd-ct/oneapp-release-helm-repository-mr"
+
+        JIRA_DEVOPS_TOKEN = credentials('jira-devops-token')
+
+        CUG_PARENT_TICKET_ID = "DGI-1109"
+        SUPERPROD_PARENT_TICKET_ID = "DGI-651"
+        // PERF_PARENT_TICKET_ID = "DGI-648"
+
+        CUG_GIT_COMMIT_URL = "https://github.com/AdityaBirlaCapitalDigital/prod-env-tracking-devops/commit/" +"${env.GIT_COMMIT}"
+        SUPERPROD_GIT_COMMIT_URL = "https://github.com/AdityaBirlaCapitalDigital/superprod-env-tracking-devops/commit/" +"${env.GIT_COMMIT}"
+        // PERF_GIT_COMMIT_URL = "https://github.com/AdityaBirlaCapitalDigital/prod-env-tracking-devops/commit/" +"${env.GIT_COMMIT}"
+
+        AUTO_NONPROD_GKE_NAME = "oneapp-nonprod-auto-gke-01"
+        AUTO_NONPROD_GKE_LOCATION = "asia-south1"
+        AUTO_NONPROD_GCP_PROJECT = "oneappuat"
+        AUTO_NONPROD_JENKINS_SLAVE_SA_JSON = "/secrets/oneapp-uat-jenkins-sa.json"
+        AUTO_NONPROD_KUBE_CONTEXT = "gke_oneappuat_asia-south1_oneapp-nonprod-auto-gke-01"
+
+        AUTO_CUG_GKE_NAME = "oneapp-cug-auto-gke-01"
+        AUTO_CUG_GKE_LOCATION = "asia-south1"
+        AUTO_CUG_GCP_PROJECT = "oneappprod-388212"
+        AUTO_CUG_JENKINS_SLAVE_SA_JSON = "/secrets/oneappprod-jenkins-slave-sa.json"
+        AUTO_CUG_KUBE_CONTEXT = "gke_oneappprod-388212_asia-south1_oneapp-cug-auto-gke-01"
+
+        POC_GKE_NAME = "poc-autopilot-cluster-1"
+        POC_GKE_LOCATION = "asia-south1"
+        POC_GCP_PROJECT = "devopspoc-404512"
+        POC_JENKINS_SLAVE_SA_JSON = "/secrets/oneapp-poc-jenkins-sa.json"
+        POC_KUBE_CONTEXT = "gke_devopspoc-404512_asia-south1_poc-autopilot-cluster-1"
+
+        SUPERPROD_GKE_NAME = "oneapp-superprod-gke-01"
+        SUPERPROD_GKE_LOCATION = "asia-south1"
+        SUPERPROD_GCP_PROJECT = "oneappsuperprod"
+        SUPERPROD_JENKINS_SLAVE_SA_EMAIL = "custom-superprod-jenkins-slave@devops-ci-cd-ct.iam.gserviceaccount.com"
+        SUPERPROD_JENKINS_SLAVE_SA_JSON = "/secrets/oneappsprod-jenkins-slave-sa.json"
+        SUPERPROD_KUBE_CONTEXT = "gke_oneappsuperprod_asia-south1_oneapp-superprod-gke-01"
+
+        SUPERPROD_DR_GKE_NAME = "oneapp-superprod-gke-dr-01"
+        SUPERPROD_DR_GKE_LOCATION = "asia-south2"
+        SUPERPROD_DR_GCP_PROJECT = "oneappsuperprod"
+        SUPERPROD_DR_JENKINS_SLAVE_SA_EMAIL = "custom-superprod-jenkins-slave@devops-ci-cd-ct.iam.gserviceaccount.com"
+        SUPERPROD_DR_KUBE_CONTEXT = "gke_oneappsuperprod_asia-south2_oneapp-superprod-gke-dr-01"
+    }
+
+    stages {
+        stage('Deployment to SUPER PROD GKE cluster using helm chart') {
+            agent { node { label 'jenkins-superprod-slave-container' } }
+            when {
+                beforeAgent true
+                expression {
+                    def commitMessage = sh(script: 'git log --format=%B -n 1 HEAD', returnStdout: true).trim()
+                    return !commitMessage.contains('JenkinsIgnoreThis') && env.GIT_URL == 'https://github.com/AdityaBirlaCapitalDigital/superprod-env-tracking-devops.git'
+                }
+            }
+            steps {
+                gcloud_setup_container(SUPERPROD_GKE_NAME,SUPERPROD_GKE_LOCATION,SUPERPROD_GCP_PROJECT,SUPERPROD_JENKINS_SLAVE_SA_JSON)
+                copy_artifact()
+                get_helm_to_deploy("regular")
+                deploy_helm(RELEASE_HELM_REPOSITORY,RELEASE_DOCKER_REPOSITORY,SUPERPROD_VALUES_FILE,"null", SUPERPROD_NS,SUPERPROD_UPI_NS,SUPERPROD_MONITORING_NS,"NO",SUPERPROD_KUBE_CONTEXT,"regular","prod")
+                create_artifact("regular")
+                jira_ticket_creation("regular",SUPERPROD_GIT_COMMIT_URL,SUPERPROD_PARENT_TICKET_ID)
+            }
+            post {
+                always {
+                    html_file_creation("regular")
+                    email_trigger_regular("SuperProd")
+                    clean_workspace()
+                }
+            }
+        }
+        stage('Deployment to SUPER PROD DR GKE cluster using helm chart') {
+            agent { node { label 'jenkins-superprod-slave-container' } }
+            when {
+                beforeAgent true
+                expression {
+                    def commitMessage = sh(script: 'git log --format=%B -n 1 HEAD', returnStdout: true).trim()
+                    return !commitMessage.contains('JenkinsIgnoreThis') && env.GIT_URL == 'https://github.com/AdityaBirlaCapitalDigital/superprod-env-tracking-devops.git'
+                }
+            }
+            steps {
+                gcloud_setup_container(SUPERPROD_DR_GKE_NAME,SUPERPROD_DR_GKE_LOCATION,SUPERPROD_DR_GCP_PROJECT,SUPERPROD_JENKINS_SLAVE_SA_JSON)
+                copy_artifact()
+                get_helm_to_deploy("dr")
+                deploy_helm(RELEASE_HELM_REPOSITORY,RELEASE_DOCKER_REPOSITORY,SUPERPROD_VALUES_FILE,"null", SUPERPROD_NS,SUPERPROD_UPI_NS,SUPERPROD_MONITORING_NS,"NO",SUPERPROD_DR_KUBE_CONTEXT,"dr", "prod")
+                create_artifact("dr")
+            }
+            post {
+                always {
+                    html_file_creation("dr")
+                    email_trigger_dr("DR-SuperProd")
+                    clean_workspace()
+                }
+            }
+        }
+    }
+    post { 
+        always {
+            clean_workspace()
+        }
+    }
+}
+
+def copy_artifact() {
+    script {
+        try {
+            copyArtifacts(projectName: env.JOB_NAME,
+                            selector: lastSuccessful())
+            echo("The current build is ${currentBuild.number}")
+        } catch(err) {
+            echo err.toString()
+        }
+    }
+}
+
+def create_artifact(ENV_TYPE) {
+    script {
+        try {
+            archiveArtifacts "${ENV_TYPE}_failed_directories.txt"
+            env.failed_directories = readFile("${ENV_TYPE}_failed_directories.txt").trim()
+        } catch(err) {
+            echo err.toString()
+        }
+    }
+}
+
+def clean_workspace() {
+    cleanWs(cleanWhenNotBuilt: false,
+            deleteDirs: true,
+            disableDeferredWipeout: true,
+            notFailBuild: true)
+}
+
+def gcloud_setup_container(GKE_NAME,GKE_LOCATION,GCP_PROJECT,JENKINS_SLAVE_SA_JSON) {
+    echo "Inside gcloud_setup funtion"
+    sh """#!/bin/bash
+    gcloud auth activate-service-account --key-file=${JENKINS_SLAVE_SA_JSON}
+    gcloud auth list
+    gcloud config list
+    gcloud auth configure-docker asia-docker.pkg.dev,asia-south1-docker.pkg.dev
+    gcloud container clusters get-credentials ${GKE_NAME} --zone ${GKE_LOCATION} --project ${GCP_PROJECT} --internal-ip
+    """
+}
+
+// function to gcloud_setup
+def gcloud_setup_vm(GKE_NAME,GKE_LOCATION,GCP_PROJECT,JENKINS_SLAVE_SA_EMAIL) {
+    echo "Inside gcloud_setup funtion"
+    sh """#!/bin/bash
+    gcloud config set account ${JENKINS_SLAVE_SA_EMAIL}
+    gcloud auth list
+    gcloud config list
+    gcloud auth configure-docker asia-docker.pkg.dev,asia-south1-docker.pkg.dev
+    gcloud container clusters get-credentials ${GKE_NAME} --zone ${GKE_LOCATION} --project ${GCP_PROJECT} --internal-ip
+    """
+}
+
+def get_helm_to_deploy(ENV_TYPE) {
+    echo "Inside get_helm_to_deploy funtion"
+
+    def currentCommit = sh(script: "git rev-parse HEAD", returnStdout: true).trim()
+    script {
+        env.changed_directories = sh(script:"""#!/bin/bash
+    export artifact_file_path="${ENV_TYPE}_failed_directories.txt"
+    if [ -f "\${artifact_file_path}" ]; then
+        artifact_file_contents=\$(<"\${artifact_file_path}")
+        > ${ENV_TYPE}_failed_directories.txt
+    else
+        artifact_file_contents=""
+    fi
+    export git_changed_directories=\$(git diff --name-only ${GIT_PREVIOUS_SUCCESSFUL_COMMIT} ${currentCommit} | xargs dirname | sort | uniq)
+    export changed_directories=\$(echo -e "\${artifact_file_contents}\n\${git_changed_directories}" | sort -u)
+    echo \${git_changed_directories}""", returnStdout: true).trim()
+    }
+    echo "${env.changed_directories}"
+}
+
+def deploy_helm(HELM_REPOSITORY,DOCKER_REPOSITORY,VALUES_FILE,AUTO_VALUES_FILE,NS,UPI_NS,MONITORING_NS,PUSH_TO_MAIN,KUBE_CONTEXT,ENV_TYPE,FLAVOR) {
+    echo "Inside deploy_helm funtion"
+    echo "Helm repo = $HELM_REPOSITORY"
+    echo "Helm Values.yaml = $VALUES_FILE"
+
+    def currentCommit = sh(script: "git rev-parse HEAD", returnStdout: true).trim()
+
+    sh """#!/bin/bash
+    echo "charts to deploy in this run including previous failed ${env.changed_directories}"
+    for directory in ${env.changed_directories} ; do
+        if [ "\${directory}" == "." ]; then
+            echo "readme change no need to deploy helm"
+        else
+            echo "\${directory}"
+            cd ${WORKSPACE}/"\$directory"/
+            pwd
+
+            if [ -f "helm_version.txt" ]; then
+
+                export helm_version=\$(tail -1 helm_version.txt | tr -d '\r')
+                export ${ENV_TYPE}_helm_upgrade_flag="1"
+
+                export git_url=\$(tail -1 git_url.txt)
+                echo "\${git_url}"
+
+                export git_url_processed="\${git_url##*/}"
+                echo "\${git_url_processed}"
+
+                git_url_processed_without_suffix="\${git_url_processed%.git}"
+                echo "\${git_url_processed_without_suffix}"
+
+                echo "\$directory"
+
+                if [ "${ENV_TYPE}" == "regular" ]; then
+                    if echo "\${directory}" | grep "upi"; then 
+                    helm upgrade --install "\${directory}" oci://${HELM_REPOSITORY}/"\$directory" --version "\${helm_version}" --set image.repository=${DOCKER_REPOSITORY}/"\$directory" --set image.tag="\${helm_version}" --wait --timeout 5m0s -f ${VALUES_FILE} -n ${UPI_NS} --kube-context ${KUBE_CONTEXT} --create-namespace --debug && export ${ENV_TYPE}_helm_upgrade_flag="0" || echo "\${directory}" >> ${WORKSPACE}/${ENV_TYPE}_failed_directories.txt
+                    elif echo "\${directory}" | grep "abc-web-common"; then 
+                    helm upgrade --install "\${directory}" oci://${HELM_REPOSITORY}/"\$directory" --version "\${helm_version}" --set image.repository=${DOCKER_REPOSITORY}/"\$directory" --set image.tag="\${helm_version}" --wait --timeout 5m0s -f ${VALUES_FILE} -n ${NS} --kube-context ${KUBE_CONTEXT} --create-namespace --debug && export ${ENV_TYPE}_helm_upgrade_flag="0" || echo "\${directory}" >> ${WORKSPACE}/${ENV_TYPE}_failed_directories.txt
+                    elif echo "\${directory}" | grep "abc-web-"; then 
+                    helm upgrade --install "\${directory}" oci://${HELM_REPOSITORY}/"\$directory" --version "\${helm_version}-${FLAVOR}" --set image.repository=${DOCKER_REPOSITORY}/"\$directory" --set image.tag="\${helm_version}-${FLAVOR}" --wait --timeout 5m0s -f ${VALUES_FILE} -n ${NS} --kube-context ${KUBE_CONTEXT} --create-namespace --debug && export ${ENV_TYPE}_helm_upgrade_flag="0" || echo "\${directory}" >> ${WORKSPACE}/${ENV_TYPE}_failed_directories.txt
+                    elif echo "\${directory}" | grep "abc-strapi-web"; then 
+                    helm upgrade --install "\${directory}" oci://${HELM_REPOSITORY}/"\$directory" --version "\${helm_version}-${FLAVOR}" --set image.repository=${DOCKER_REPOSITORY}/"\$directory" --set image.tag="\${helm_version}-${FLAVOR}" --wait --timeout 5m0s -f ${VALUES_FILE} -n ${NS} --kube-context ${KUBE_CONTEXT} --create-namespace --debug && export ${ENV_TYPE}_helm_upgrade_flag="0" || echo "\${directory}" >> ${WORKSPACE}/${ENV_TYPE}_failed_directories.txt
+                    elif echo "\${directory}" | grep "abc-monitoring-external-helm-charts"; then 
+                    helm upgrade --install "\${directory}" oci://${HELM_REPOSITORY}/"\$directory" --version "\${helm_version}" --wait --timeout 5m0s -f ${VALUES_FILE} -n ${MONITORING_NS} --kube-context ${KUBE_CONTEXT} --create-namespace --debug && export ${ENV_TYPE}_helm_upgrade_flag="0" || echo "\${directory}" >> ${WORKSPACE}/${ENV_TYPE}_failed_directories.txt
+                    else
+                    helm upgrade --install "\${directory}" oci://${HELM_REPOSITORY}/"\$directory" --version "\${helm_version}" --set image.repository=${DOCKER_REPOSITORY}/"\$directory" --set image.tag="\${helm_version}" --wait --timeout 5m0s -f ${VALUES_FILE} -n ${NS} --kube-context ${KUBE_CONTEXT} --create-namespace --debug && export ${ENV_TYPE}_helm_upgrade_flag="0" || echo "\${directory}" >> ${WORKSPACE}/${ENV_TYPE}_failed_directories.txt
+                    fi
+
+                elif [ "${ENV_TYPE}" == "auto" ]; then
+                    if echo "\${directory}" | grep "upi"; then 
+                    helm upgrade --install "\${directory}" oci://${HELM_REPOSITORY}/"\$directory" --version "\${helm_version}" --set image.repository=${DOCKER_REPOSITORY}/"\$directory" --set image.tag="\${helm_version}" --wait --timeout 5m0s -f ${VALUES_FILE} -f ${AUTO_VALUES_FILE} -n ${UPI_NS} --kube-context ${KUBE_CONTEXT} --create-namespace --debug && export ${ENV_TYPE}_helm_upgrade_flag="0" ||  echo "\${directory}" >> ${WORKSPACE}/${ENV_TYPE}_failed_directories.txt
+                    elif echo "\${directory}" | grep "abc-web-common"; then 
+                    helm upgrade --install "\${directory}" oci://${HELM_REPOSITORY}/"\$directory" --version "\${helm_version}" --set image.repository=${DOCKER_REPOSITORY}/"\$directory" --set image.tag="\${helm_version}" --wait --timeout 5m0s -f ${VALUES_FILE} -f ${AUTO_VALUES_FILE} -n ${NS} --kube-context ${KUBE_CONTEXT} --create-namespace --debug && export ${ENV_TYPE}_helm_upgrade_flag="0" ||  echo "\${directory}" >> ${WORKSPACE}/${ENV_TYPE}_failed_directories.txt
+                    elif echo "\${directory}" | grep "abc-web-"; then 
+                    helm upgrade --install "\${directory}" oci://${HELM_REPOSITORY}/"\$directory" --version "\${helm_version}-${FLAVOR}" --set image.repository=${DOCKER_REPOSITORY}/"\$directory" --set image.tag="\${helm_version}-${FLAVOR}" --wait --timeout 5m0s -f ${VALUES_FILE} -f ${AUTO_VALUES_FILE} -n ${NS} --kube-context ${KUBE_CONTEXT} --create-namespace --debug && export ${ENV_TYPE}_helm_upgrade_flag="0" || echo "\${directory}" >> ${WORKSPACE}/${ENV_TYPE}_failed_directories.txt
+                    elif echo "\${directory}" | grep "abc-strapi-web"; then 
+                    helm upgrade --install "\${directory}" oci://${HELM_REPOSITORY}/"\$directory" --version "\${helm_version}-${FLAVOR}" --set image.repository=${DOCKER_REPOSITORY}/"\$directory" --set image.tag="\${helm_version}-${FLAVOR}" --wait --timeout 5m0s -f ${VALUES_FILE} -f ${AUTO_VALUES_FILE} -n ${NS} --kube-context ${KUBE_CONTEXT} --create-namespace --debug && export ${ENV_TYPE}_helm_upgrade_flag="0" || echo "\${directory}" >> ${WORKSPACE}/${ENV_TYPE}_failed_directories.txt
+                    elif echo "\${directory}" | grep "abc-monitoring-external-helm-charts"; then 
+                    helm upgrade --install "\${directory}" oci://${HELM_REPOSITORY}/"\$directory" --version "\${helm_version}" --wait --timeout 5m0s -f ${VALUES_FILE} -f ${AUTO_VALUES_FILE} -n ${MONITORING_NS} --kube-context ${KUBE_CONTEXT} --create-namespace --debug && export ${ENV_TYPE}_helm_upgrade_flag="0" ||  echo "\${directory}" >> ${WORKSPACE}/${ENV_TYPE}_failed_directories.txt
+                    else
+                    helm upgrade --install "\${directory}" oci://${HELM_REPOSITORY}/"\$directory" --version "\${helm_version}" --set image.repository=${DOCKER_REPOSITORY}/"\$directory" --set image.tag="\${helm_version}" --wait --timeout 5m0s -f ${VALUES_FILE} -f ${AUTO_VALUES_FILE} -n ${NS} --kube-context ${KUBE_CONTEXT} --create-namespace --debug && export ${ENV_TYPE}_helm_upgrade_flag="0" ||  echo "\${directory}" >> ${WORKSPACE}/${ENV_TYPE}_failed_directories.txt
+                    fi
+
+                elif [ "${ENV_TYPE}" == "dr" ]; then
+                    if echo "\${directory}" | grep "upi"; then 
+                    helm upgrade --install "\${directory}" oci://${HELM_REPOSITORY}/"\$directory" --version "\${helm_version}" --set image.repository=${DOCKER_REPOSITORY}/"\$directory" --set image.tag="\${helm_version}" -f ${VALUES_FILE} -f dr_prod_values.yaml -n ${UPI_NS} --kube-context ${KUBE_CONTEXT} --create-namespace --debug && export ${ENV_TYPE}_helm_upgrade_flag="0" || echo "\${directory}" >> ${WORKSPACE}/${ENV_TYPE}_failed_directories.txt
+                    elif echo "\${directory}" | grep "abc-web-common"; then 
+                    helm upgrade --install "\${directory}" oci://${HELM_REPOSITORY}/"\$directory" --version "\${helm_version}" --set image.repository=${DOCKER_REPOSITORY}/"\$directory" --set image.tag="\${helm_version}" -f ${VALUES_FILE} -f dr_prod_values.yaml -n ${NS} --kube-context ${KUBE_CONTEXT} --create-namespace --debug && export ${ENV_TYPE}_helm_upgrade_flag="0" ||  echo "\${directory}" >> ${WORKSPACE}/${ENV_TYPE}_failed_directories.txt
+                    elif echo "\${directory}" | grep "abc-web-"; then 
+                    helm upgrade --install "\${directory}" oci://${HELM_REPOSITORY}/"\$directory" --version "\${helm_version}-${FLAVOR}" --set image.repository=${DOCKER_REPOSITORY}/"\$directory" --set image.tag="\${helm_version}-${FLAVOR}" -f ${VALUES_FILE} -f dr_prod_values.yaml -n ${NS} --kube-context ${KUBE_CONTEXT} --create-namespace --debug && export ${ENV_TYPE}_helm_upgrade_flag="0" || echo "\${directory}" >> ${WORKSPACE}/${ENV_TYPE}_failed_directories.txt
+                     elif echo "\${directory}" | grep "abc-strapi-web"; then 
+                    helm upgrade --install "\${directory}" oci://${HELM_REPOSITORY}/"\$directory" --version "\${helm_version}-${FLAVOR}" --set image.repository=${DOCKER_REPOSITORY}/"\$directory" --set image.tag="\${helm_version}-${FLAVOR}" -f ${VALUES_FILE} -f dr_prod_values.yaml -n ${NS} --kube-context ${KUBE_CONTEXT} --create-namespace --debug && export ${ENV_TYPE}_helm_upgrade_flag="0" || echo "\${directory}" >> ${WORKSPACE}/${ENV_TYPE}_failed_directories.txt
+                    elif echo "\${directory}" | grep "abc-monitoring-external-helm-charts"; then 
+                    helm upgrade --install "\${directory}" oci://${HELM_REPOSITORY}/"\$directory" --version "\${helm_version}" -f ${VALUES_FILE} -f dr_prod_values.yaml -n ${MONITORING_NS} --kube-context ${KUBE_CONTEXT} --create-namespace --debug && export ${ENV_TYPE}_helm_upgrade_flag="0" || echo "\${directory}" >> ${WORKSPACE}/${ENV_TYPE}_failed_directories.txt
+                    else
+                    helm upgrade --install "\${directory}" oci://${HELM_REPOSITORY}/"\$directory" --version "\${helm_version}" --set image.repository=${DOCKER_REPOSITORY}/"\$directory" --set image.tag="\${helm_version}" -f ${VALUES_FILE} -f dr_prod_values.yaml -n ${NS} --kube-context ${KUBE_CONTEXT} --create-namespace --debug && export ${ENV_TYPE}_helm_upgrade_flag="0" ||  echo "\${directory}" >> ${WORKSPACE}/${ENV_TYPE}_failed_directories.txt
+                    fi
+
+                else
+                    echo "Specify ENV Type"
+                fi
+                
+                if [ "\${${ENV_TYPE}_helm_upgrade_flag}" == "0" ]; then
+
+                    echo "Helm upgrade succeeded for \${directory}"
+
+                    echo "\${directory},\${helm_version},passed" >> ${WORKSPACE}/${ENV_TYPE}_passed_directories_with_version.txt
+                    cat ${WORKSPACE}/${ENV_TYPE}_passed_directories_with_version.txt
+
+
+                    if [ "\${directory}" == "abc-common-properties" ]; then
+                        echo "should we restart all deployments ?"
+                    elif [ "\${directory}" == "abc-common-pl-secret" ]; then
+                        echo "should we restart all pl deployments ?"
+                    elif [ "\${directory}" == "abc-upi-common-properties" ]; then
+                        echo "should we restart all upi deployments ?"
+                    elif echo "\${directory}" | grep "external"; then
+                        echo "no manual restart needed since this is umbrella for external helm charts"
+                    else
+                        if echo "\${directory}" | grep "upi"; then
+                            kubectl rollout restart deployment "\${directory}" -n ${UPI_NS} --context ${KUBE_CONTEXT}
+                        else
+                            kubectl rollout restart deployment "\${directory}" -n ${NS} --context ${KUBE_CONTEXT}
+                        fi
+                        if [ "${PUSH_TO_MAIN}" == "YES" ]; then
+                            echo "Merging tag \${helm_version} in main branch on \${git_url} for \${directory}"
+                            git config --global user.email "jenkins.test@gavstec.com"
+                            git config --global user.name "Jenkin-test"
+                            git clone \${git_url}
+                            cd \${git_url_processed_without_suffix}
+                            git checkout \${helm_version}
+                            git checkout main
+                            git merge \${helm_version}
+                            git push -u origin main
+                            cd ..
+                        else
+                            echo "Not Merging to main branch"
+                        fi
+                        pwd;ls -lrt
+                    fi
+                else
+                    echo "Helm upgrade failed for \${directory}"
+                    echo "\${directory},\${helm_version},failed" >> ${WORKSPACE}/${ENV_TYPE}_failed_directories_with_version.txt
+                    cat ${WORKSPACE}/${ENV_TYPE}_failed_directories_with_version.txt
+                fi
+                pwd
+            else
+                echo "helm_version.txt not found hence SKIPPING"
+            fi
+        fi
+    done
+    """
+}
+
+
+def jira_ticket_creation(ENV_TYPE,GIT_COMMIT_URL,PARENT_TICKET_ID) {
+    echo "jira_ticket_creation"
+
+    sh """#!/bin/bash
+    export passed_artifact_file_path="${ENV_TYPE}_passed_directories_with_version.txt"
+    if [ -f "\${passed_artifact_file_path}" ]; then
+        passed_artifact_file_contents=\$(<"\${passed_artifact_file_path}")
+    else
+        passed_artifact_file_contents=""
+    fi
+
+    echo "passed list is as follows"
+
+    for line in \${passed_artifact_file_contents} ; do
+        if [ "\${line}" == "null" ]; then
+            echo "no ticket to create"
+        else
+            echo \${line}
+            export directory=\$(echo \${line} | cut -d',' -f1)
+            echo \${directory}
+            export helm_version=\$(echo \${line} | cut -d',' -f2)
+            echo \${helm_version}
+            export deployment_status=\$(echo \${line} | cut -d',' -f3)
+            echo \${deployment_status}
+            export current_time_jira_format=\$(date +'%Y-%m-%dT%H:%M:%S.000%z')
+            echo \${current_time_jira_format}
+
+            curl -s -o create_response.txt -D- -u abconeabcdevopsteam@gavstech.com:${env.JIRA_DEVOPS_TOKEN} -X POST --data '{"fields":{"project":{"key":"DGI"},"summary":"'"\${directory}-\${helm_version}-\${deployment_status}"'","description":"'"\${directory}-\${helm_version}-\${deployment_status}"'","customfield_10228":"'"\${directory}"'","customfield_10229":"'"\${helm_version}"'","customfield_10230":"'"\${current_time_jira_format}"'","customfield_10231":"'"\${deployment_status}"'","customfield_10232":"${GIT_COMMIT_URL}","parent":{"key":"${PARENT_TICKET_ID}"},"issuetype":{"name":"Task"}}}' -H "Content-Type: application/json" https://adityabirlacapitaldigital.atlassian.net/rest/api/2/issue/
+            cat create_response.txt
+
+            export key=\$(awk -F'"' '/key/{print \$4}' create_response.txt)
+            echo \${key}
+
+            curl -u abconeabcdevopsteam@gavstech.com:${env.JIRA_DEVOPS_TOKEN} -X POST --data '{"transition":{"id":"41"}}' -H "Content-Type: application/json" https://adityabirlacapitaldigital.atlassian.net/rest/api/2/issue/\${key}/transitions
+            rm create_response.txt
+        fi
+    done
+
+    export failed_artifact_file_path="${ENV_TYPE}_failed_directories_with_version.txt"
+    if [ -f "\${failed_artifact_file_path}" ]; then
+        failed_artifact_file_contents=\$(<"\${failed_artifact_file_path}")
+    else
+        failed_artifact_file_contents=""
+    fi
+
+
+    echo "failed list is as follows"
+    for line in \${failed_artifact_file_contents} ; do
+        if [ "\${line}" == "null" ]; then
+            echo "no ticket to create"
+        else
+            echo \${line}
+            export directory=\$(echo \${line} | cut -d',' -f1)
+            echo \${directory}
+            export helm_version=\$(echo \${line} | cut -d',' -f2)
+            echo \${helm_version}
+            export deployment_status=\$(echo \${line} | cut -d',' -f3)
+            echo \${deployment_status}
+            export current_time_jira_format=\$(date +'%Y-%m-%dT%H:%M:%S.000%z')
+            echo \${current_time_jira_format}
+
+            curl -s -o create_response.txt -D- -u abconeabcdevopsteam@gavstech.com:${env.JIRA_DEVOPS_TOKEN} -X POST --data '{"fields":{"project":{"key":"DGI"},"summary":"'"\${directory}-\${helm_version}-\${deployment_status}"'","description":"'"\${directory}-\${helm_version}-\${deployment_status}"'","customfield_10228":"'"\${directory}"'","customfield_10229":"'"\${helm_version}"'","customfield_10230":"'"\${current_time_jira_format}"'","customfield_10231":"'"\${deployment_status}"'","customfield_10232":"${GIT_COMMIT_URL}","parent":{"key":"${PARENT_TICKET_ID}"},"issuetype":{"name":"Task"}}}' -H "Content-Type: application/json" https://adityabirlacapitaldigital.atlassian.net/rest/api/2/issue/
+            cat create_response.txt
+
+            export key=\$(awk -F'"' '/key/{print \$4}' create_response.txt)
+            echo \${key}
+
+            curl -u abconeabcdevopsteam@gavstech.com:${env.JIRA_DEVOPS_TOKEN} -X POST --data '{"transition":{"id":"41"}}' -H "Content-Type: application/json" https://adityabirlacapitaldigital.atlassian.net/rest/api/2/issue/\${key}/transitions
+            rm create_response.txt
+        fi
+    done
+    """
+}
+
+def html_file_creation(ENV_TYPE) {
+    echo "${ENV_TYPE}_html_file_creation"
+
+    sh """#!/bin/bash
+
+    export passed_artifact_file_path="${ENV_TYPE}_passed_directories_with_version.txt"
+    if [ -f "\${passed_artifact_file_path}" ]; then
+        passed_artifact_file_contents=\$(<"\${passed_artifact_file_path}")
+        > ${ENV_TYPE}_passed_directories_with_version.txt
+    else
+        passed_artifact_file_contents=""
+    fi
+
+    echo "passed list is as follows"
+
+    echo "<html><head><style>body {font-family: Arial, sans-serif;}.header {background-color: #007bff;color: #fff;padding: 10px;text-align: center;}.content {padding: 20px;}.footer {background-color: #f4f4f4;padding: 10px;text-align: center;}</style></head>" > ${ENV_TYPE}_report.html
+    echo '<html><table border=1 cellpadding=10>' >> ${ENV_TYPE}_report.html
+    echo "<tr style="background-color:#63e5ff"><th>Service Name</th><th>Service Version</th><th>Deployment Status</th><th>Deployment Date Time</th></tr>" >> ${ENV_TYPE}_report.html
+
+    for line in \${passed_artifact_file_contents} ; do
+        if [ "\${line}" == "null" ]; then
+            echo "no ticket to create"
+        else
+            echo \${line}
+            export directory=\$(echo \${line} | cut -d',' -f1)
+            echo \${directory}
+            export helm_version=\$(echo \${line} | cut -d',' -f2)
+            echo \${helm_version}
+            export deployment_status=\$(echo \${line} | cut -d',' -f3)
+            echo \${deployment_status}
+            export current_time_jira_format=\$(date +'%Y-%m-%dT%H:%M:%S.000%z')
+            echo \${current_time_jira_format}
+
+            echo "<tr><td>\${directory}</td><td>\${helm_version}</td><td>\${deployment_status}</td><td>\${current_time_jira_format}</td></tr>" >> ${ENV_TYPE}_report.html
+
+        fi
+    done
+
+    export failed_artifact_file_path="${ENV_TYPE}_failed_directories_with_version.txt"
+    if [ -f "\${failed_artifact_file_path}" ]; then
+        failed_artifact_file_contents=\$(<"\${failed_artifact_file_path}")
+        > ${ENV_TYPE}_failed_directories_with_version.txt
+    else
+        failed_artifact_file_contents=""
+    fi
+
+    echo "failed list is as follows"
+    for line in \${failed_artifact_file_contents} ; do
+        if [ "\${line}" == "null" ]; then
+            echo "no ticket to create"
+        else
+            echo \${line}
+            export directory=\$(echo \${line} | cut -d',' -f1)
+            echo \${directory}
+            export helm_version=\$(echo \${line} | cut -d',' -f2)
+            echo \${helm_version}
+            export deployment_status=\$(echo \${line} | cut -d',' -f3)
+            echo \${deployment_status}
+            export current_time_jira_format=\$(date +'%Y-%m-%dT%H:%M:%S.000%z')
+            echo \${current_time_jira_format}
+
+            echo "<tr><td>\${directory}</td><td>\${helm_version}</td><td>\${deployment_status}</td><td>\${current_time_jira_format}</td></tr>" >> ${ENV_TYPE}_report.html
+
+        fi
+
+    echo '</div></body></html>' >> ${ENV_TYPE}_report.html
+
+
+    done
+    """
+}
+
+def email_trigger_regular(ENV) {
+    echo "email_trigger"
+    echo "${ENV}"
+
+    emailext mimeType: 'text/html',
+        body: '${FILE, path="regular_report.html"}',
+        to: 'ABCOneABCDevopsTeam@gavstech.com,ABCOneABCAPITeam@gavstech.com,abfssl.ingcpsupp1@adityabirlacapital.com,abfssl.ingcpsupp2@adityabirlacapital.com,abfssl.ingcpsupp3@adityabirlacapital.com,abfssl.ingcpsupp4@adityabirlacapital.com,jothika.1@adityabirlacapital.com,savita.x-v@adityabirlacapital.com,sivakumar.ramalingam-v@adityabirlacapital.com,janarthanan.rajendran-v@adityabirlacapital.com,deyvarayan.arunachalam-v@adityabirlacapital.com,saipriya.s-v@adityabirlacapital.com,gobinath.perumal@adityabirlacapital.com',
+        subject: "${ENV} | ${env.JOB_NAME} | #${env.BUILD_NUMBER}",
+        attachLog:true
+
+}
+
+def email_trigger_auto(ENV) {
+    echo "email_trigger"
+    echo "${ENV}"
+
+    emailext mimeType: 'text/html',
+        body: '${FILE, path="auto_report.html"}',
+        to: 'ABCOneABCDevopsTeam@gavstech.com,ABCOneABCAPITeam@gavstech.com,abfssl.ingcpsupp1@adityabirlacapital.com,abfssl.ingcpsupp2@adityabirlacapital.com,abfssl.ingcpsupp3@adityabirlacapital.com,abfssl.ingcpsupp4@adityabirlacapital.com,jothika.1@adityabirlacapital.com,savita.x-v@adityabirlacapital.com,sivakumar.ramalingam-v@adityabirlacapital.com,janarthanan.rajendran-v@adityabirlacapital.com,deyvarayan.arunachalam-v@adityabirlacapital.com,saipriya.s-v@adityabirlacapital.com,gobinath.perumal@adityabirlacapital.com',
+        // to: 'ABCOneABCDevopsTeam@gavstech.com,abfssl.ingcpsupp1@adityabirlacapital.com,abfssl.ingcpsupp2@adityabirlacapital.com,abfssl.ingcpsupp3@adityabirlacapital.com,abfssl.ingcpsupp4@adityabirlacapital.com,jothika.1@adityabirlacapital.com,savita.x-v@adityabirlacapital.com',ajeethkumar.sankarraj-v@adityabirlacapital.com,kumaresan.subramani-v@adityabirlacapital.com,sasikumar.alakesan-v@adityabirlacapital.com,
+        subject: "${ENV} | ${env.JOB_NAME} | #${env.BUILD_NUMBER}",
+        attachLog:true
+
+}
+
+def email_trigger_dr(ENV) {
+    echo "email_trigger"
+    echo "${ENV}"
+
+    emailext mimeType: 'text/html',
+        body: '${FILE, path="dr_report.html"}',
+        to: 'ABCOneABCDevopsTeam@gavstech.com,abfssl.ingcpsupp1@adityabirlacapital.com,abfssl.ingcpsupp2@adityabirlacapital.com,abfssl.ingcpsupp3@adityabirlacapital.com,abfssl.ingcpsupp4@adityabirlacapital.com,jothika.1@adityabirlacapital.com,savita.x-v@adityabirlacapital.com,gobinath.perumal@adityabirlacapital.com',
+        subject: "${ENV} | ${env.JOB_NAME} | #${env.BUILD_NUMBER}",
+        attachLog:true
+
+}

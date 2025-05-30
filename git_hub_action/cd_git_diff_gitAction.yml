@@ -1,0 +1,21 @@
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      folders: ${{ steps.get-folders.outputs.changed }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Detect changed folders
+        id: get-folders
+        run: |
+          commit1=${{ github.event.before }}
+          commit2=${{ github.sha }}
+
+          echo "Comparing $commit1 to $commit2"
+
+          folders=$(git diff --name-only $commit1 $commit2 | cut -d '/' -f1 | sort -u | grep '^micro_service' | jq -R . | jq -s .)
+
+          echo "Changed folders: $folders"
+          echo "changed=$folders" >> $GITHUB_OUTPUT
