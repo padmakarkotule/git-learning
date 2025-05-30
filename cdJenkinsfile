@@ -5,7 +5,7 @@ pipeline {
         disableConcurrentBuilds();
     }
     environment {
-// values.yaml inside helmchart for each individual environment
+// values.yaml inside helmchart for each individual environment.
         CUG_VALUES_FILE = "prod_values.yaml"
         AUTO_CUG_VALUES_FILE = "auto_prod_values.yaml"
 
