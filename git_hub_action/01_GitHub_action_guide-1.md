@@ -1,5 +1,5 @@
 Here's a **comprehensive step-by-step guide** to set up a GitHub Actions **self-hosted runner** and run a basic GitHub Actions pipeline with a job that simply echoes "starting pipeline".
-
+# Quick installation of git actions
 ---
 
 ## ✅ Overview
