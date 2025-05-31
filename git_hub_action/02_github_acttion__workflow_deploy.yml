@@ -1,0 +1,62 @@
+name: Deploy Changed Services
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+
+      - name: Deploy Changed Services
+        run: |
+          chmod +x ./deploy_changed_services.sh
+          ./deploy_changed_services.sh
+        env:
+          DRY_RUN: false  # set to true for dry-run
+
+### GitHub Actions Equivalent of post { success {} failure {} } of Jenkinsfile
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run deployment script
+        run: ./deploy_changed_services.sh
+        id: deploy
+
+      # ✅ Success message
+      - name: ✅ Success notification
+        if: ${{ success() }}
+        run: echo "✅ Deployment completed successfully."
+
+      # ❌ Failure message
+      - name: ❌ Failure notification
+        if: ${{ failure() }}
+        run: echo "❌ Deployment failed."
+
+# Explaintation
+# | Condition   | Meaning                                                                          |
+#| ----------- | -------------------------------------------------------------------------------- |
+#| `success()` | Runs only if all previous steps **succeeded**                                    |
+#| `failure()` | Runs only if a previous step **failed**                                          |
+#| `always()`  | Runs **regardless** of success or failure (like `post { always {} }` in Jenkins) |
+
+# Optional: Use Notifications
+# If you're using Slack, Teams, or Email, these if: blocks are where you'd trigger alerts:
+- name: Notify Slack on failure
+  if: ${{ failure() }}
+  uses: some/slack-action
+  with:
+    message: "❌ Deployment failed for ${{ github.repository }}"

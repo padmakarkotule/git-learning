@@ -1,0 +1,39 @@
+# In Jenkins, the pipeline definition file is typically named Jenkinsfile with no extension — just: Jenkinsfile
+pipeline {
+    agent any
+    environment {
+        DRY_RUN = 'false'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git url: 'https://your-repo.git', branch: 'main'
+            }
+        }
+
+        stage('Setup Helm') {
+            steps {
+                sh 'curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash'
+            }
+        }
+
+        stage('Deploy Changed Services') {
+            steps {
+                sh '''
+                  chmod +x ./deploy_changed_services.sh
+                  ./deploy_changed_services.sh
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Deployment completed successfully.'
+        }
+        failure {
+            echo '❌ Deployment failed.'
+        }
+    }
+}
